@@ -9,16 +9,17 @@ public class PlayerJpaRepository {
 
     public PlayerEntity findByName(String name) {
         try (Session s = HibernateUtil.getSessionFactory().openSession()) {
+
             return s.createQuery("from PlayerEntity p where p.nickname=:n", PlayerEntity.class)
                            .setParameter("n", name)
                            .uniqueResult();
         }
     }
 
-    public void saveOrUpdate(PlayerEntity e) {
-        try (Session s = HibernateUtil.getSessionFactory().openSession()) {
-            Transaction tx = s.beginTransaction();
-            s.merge(e); // upsert
+    public void saveOrUpdate(PlayerEntity player) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            var tx = session.beginTransaction();
+            session.merge(player);  // або session.saveOrUpdate(player)
             tx.commit();
         }
     }

@@ -543,9 +543,13 @@ public class GameApp extends SimpleApplication {
 
     public void onPlayerStats(com.example.shared.messages.PlayerStatsMessage m) {
         enqueue(() -> {
+            System.out.println("[CLIENT] onPlayerStats " + m.getHp() + "/" + m.getMaxHp());
             com.example.client.PlayerContext.get().resetHpLocal(m.getHp(), m.getMaxHp());
+
             var hud = stateManager.getState(com.example.client.screens.PlayerHudState.class);
-            if (hud != null) hud.updateStats(m.getHp(), m.getMaxHp(), m.getLevel(), m.getExp(), m.getExpToNext());
+            if (hud != null) {
+                hud.updateStats(m.getHp(), m.getMaxHp(), m.getLevel(), m.getExp(), m.getExpToNext());
+            }
         });
     }
 

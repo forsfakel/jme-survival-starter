@@ -1,7 +1,9 @@
 package com.example.client.screens;
 
+import com.example.client.GameApp;
 import com.example.client.PlayerContext;
 import com.example.shared.messages.BattleEndReport;
+import com.example.shared.messages.PlayerHpSync;
 import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.BaseAppState;
@@ -130,14 +132,14 @@ public class BattleState3D extends BaseAppState {
         this.app = (SimpleApplication) application;
 
         // Контекст гравця
-        this.pc = com.example.client.PlayerContext.get();
-        pc.setInBattle(true);
+        var pc = com.example.client.PlayerContext.get();
 
-
-        // ініціалізуємо HP з контексту
+        // ініціалізація HP бою з контексту
         this.playerMaxHP = pc.getHpMax();
-        this.playerHP = Math.min(pc.getHp(), this.playerMaxHP);
-        System.out.println("[BattleState3D] init: HP=" + playerHP + "/" + playerMaxHP);
+        this.playerHP    = pc.getHp();
+
+        System.out.println("[CLIENT] BattleState3D.init HP=" +
+                                   this.playerHP + "/" + this.playerMaxHP);
 
         // 1) камера (перспектива) + фон
         var cam = app.getCamera();
@@ -690,18 +692,27 @@ public class BattleState3D extends BaseAppState {
      * Єдине місце завершення бою: спершу зберігаємо HP, потім усе інше.
      */
     private void finishBattle(boolean win) {
+        var pc = com.example.client.PlayerContext.get();
+
+        // 1) переконайся, що беремо HP із поточного бою
         pc.setHp(this.playerHP);
-        pc.setInBattle(false);
 
-        // синк HP на сервер
+        System.out.println("[CLIENT] finishBattle: playerHP=" + this.playerHP +
+                                   " / max=" + this.playerMaxHP +
+                                   " (pc=" + pc.getHp() + "/" + pc.getHpMax() + ")");
+
+        // 2) синк у БД (шлемо саме актуальний HP)
         ((com.example.client.GameApp) app).sendToServer(
-                new com.example.shared.messages.PlayerHpSync(pc.getHp(), pc.getHpMax())
+                new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP)
         );
+        System.out.println("[CLIENT] -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
 
-        // як і було
+        // 3) звіт про бій як було
         ((com.example.client.GameApp) app).sendToServer(
                 new com.example.shared.messages.BattleEndReport(battleId, win)
         );
+
+        pc.setInBattle(false);
         if (onExit != null) onExit.run();
         getStateManager().detach(this);
     }

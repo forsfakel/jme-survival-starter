@@ -13,8 +13,10 @@ import com.example.shared.messages.LocationMessage;
 import com.example.shared.messages.LoginMessage;
 import com.example.shared.messages.OpenBuildingRequest;
 import com.example.shared.messages.OpenBuildingResponse;
+import com.example.shared.messages.PlayerHpSync;
 import com.example.shared.messages.PlayerListMessage;
 import com.example.shared.messages.PlayerPositionMessage;
+import com.example.shared.messages.PlayerStatsMessage;
 import com.example.shared.model.Player;
 import com.example.shared.model.WorldLocation;
 import io.netty.channel.*;
@@ -74,32 +76,35 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
                     new com.example.shared.messages.BattleStartResponse(true, battleId, "Fight!",
                             enemies));
         } else if (msg instanceof com.example.shared.messages.PlayerHpSync sync) {
-            // 1) з’ясувати, який гравець на цьому каналі
+            System.out.println("[HP-SYNC] incoming " + sync.hp + "/" + sync.hpMax);
             var session = server.sessions().get(ctx.channel());
             if (session == null || session.getPlayer() == null) {
                 return;
             }
             String name = session.getPlayer().getName();
 
-            // 2) клампи, анти-чит
             int hpMax = Math.max(1, Math.min(sync.hpMax, 9999));
-            int hp = Math.max(0, Math.min(sync.hp, hpMax));
+            int hp    = Math.max(0, Math.min(sync.hp, hpMax));
 
-            // 3) завантажити існуючого і оновити HP (не створювати тут!)
-            var playerRepo = new com.example.server.repo.PlayerJpaRepository();
-            com.example.server.model.PlayerEntity pe = playerRepo.findByName(name);
+            var repo = new com.example.server.repo.PlayerJpaRepository();
+            var pe = repo.findByName(name);
             if (pe == null) {
-                System.out.println(
-                        "[HP-SYNC] skip: no player for '" + name + "' (not logged in yet?)");
+                System.out.println("[HP-SYNC] skip: no player entity for '" + name + "'");
                 return;
             }
+
+            System.out.println("[HP-SYNC] before DB " + pe.getNickname() + " " + pe.getHp() + "/" + pe.getHpMax());
             pe.setHp(hp);
             pe.setHpMax(hpMax);
-            playerRepo.saveOrUpdate(pe);  // Hibernate merge -> upsert
+            repo.saveOrUpdate(pe); // усередині merge+commit
 
-            // 4) (опційно) відправити назад свіжі стати гравцю — HUD їх покаже
-            ctx.writeAndFlush(new com.example.shared.messages.PlayerStatsMessage(pe.getHp(),
-                    pe.getHpMax(), /*level*/1, /*exp*/0, /*expToNext*/100));
+            // Перечитаємо одразу (для діагностики)
+            var pe2 = repo.findByName(name);
+            System.out.println("[HP-SYNC] after DB  " + pe2.getNickname() + " " + pe2.getHp() + "/" + pe2.getHpMax());
+
+            ctx.writeAndFlush(new com.example.shared.messages.PlayerStatsMessage(
+                    pe2.getHp(), pe2.getHpMax(), 1, 0, 100
+            ));
         }
     }
 
@@ -113,11 +118,11 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
         LocationJpaRepository locationRepo = server.locations();
 
         // знайти/створити гравця
-        PlayerEntity pe = playerRepo.findByName(name);
+        var pe = playerRepo.findByName(name);
+        System.out.println("[LOGIN] findByName('" + name + "') -> " + (pe==null ? "null" : pe.getId()));
         if (pe == null) {
-            // гарантуємо існування базової локації (0,0)
-            LocationEntity loc00 = locationRepo.getOrCreate(0, 0);
-            pe = new PlayerEntity(UUID.randomUUID().toString(), name, loc00);
+            var loc00 = locationRepo.getOrCreate(0, 0);
+            pe = new PlayerEntity(UUID.randomUUID().toString(), name, loc00); // тут hp=100/100 тільки для нових
             playerRepo.saveOrUpdate(pe);
         }
 
@@ -137,8 +142,11 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
         broadcastPlayerList(dto.getLocation());
 
         // надіслати поточні стати (HP з БД) клієнту для HUD/контексту
-        ctx.writeAndFlush(new com.example.shared.messages.PlayerStatsMessage(pe.getHp(),
-                pe.getHpMax(), /*level*/1, /*exp*/0, /*expToNext*/100 ));
+        // Гарантовано шлемо HP з БД після логіну
+        System.out.println("[LOGIN] -> PlayerStatsMessage " + pe.getHp() + "/" + pe.getHpMax());
+        ctx.writeAndFlush(new com.example.shared.messages.PlayerStatsMessage(
+                pe.getHp(), pe.getHpMax(), 1, 0, 100
+        ));
 
         System.out.println("👤 Login ok: " + dto.getName() + " @ " + dto.getLocation().getX() + ","
                                    + dto.getLocation().getY());
