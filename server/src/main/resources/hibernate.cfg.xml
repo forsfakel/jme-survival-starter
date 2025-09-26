@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<hibernate-configuration>
+    <session-factory>
+
+        <property name="hibernate.connection.provider_class">
+            org.hibernate.hikaricp.internal.HikariCPConnectionProvider
+        </property>
+        <property name="hibernate.hikari.dataSourceClassName">org.sqlite.SQLiteDataSource</property>
+        <property name="hibernate.hikari.dataSource.url">jdbc:sqlite:game.db</property>
+
+        <!-- Діалект з community-дилектів -->
+        <property name="hibernate.dialect">org.hibernate.community.dialect.SQLiteDialect</property>
+
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        <property name="hibernate.show_sql">false</property>
+        <property name="hibernate.format_sql">true</property>
+
+        <mapping class="com.example.server.model.PlayerEntity"/>
+        <mapping class="com.example.server.model.LocationEntity"/>
+        <mapping class="com.example.server.model.BuildingEntity"/>
+        <mapping class="com.example.server.model.id.LocationId"/>
+        <mapping class="com.example.server.model.emb.WorldLocationEmb"/>
+        <mapping class="com.example.server.model.BuildingAccessEntity"/>
+
+    </session-factory>
+</hibernate-configuration>

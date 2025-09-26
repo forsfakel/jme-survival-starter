@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option java_package = "com.example.shared.proto";
+option java_outer_classname = "GameMessages";
+
+message LocationMsg {
+  int32 x = 1;
+  int32 y = 2;
+  repeated string buildings = 3;
+}

@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example.client'
+version = '1.0.0'
+
+sourceCompatibility = '17'
+
+mainClassName = 'client.ClientMain'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':shared')
+    // jME3 Core
+    implementation "org.jmonkeyengine:jme3-core:3.6.1-stable"
+    implementation "org.jmonkeyengine:jme3-desktop:3.6.1-stable"
+    implementation "org.jmonkeyengine:jme3-lwjgl3:3.6.1-stable"
+
+    // Bullet Physics (новий модуль jme3-jbullet)
+    implementation "org.jmonkeyengine:jme3-jbullet:3.6.1-stable"
+
+    // За потреби: FX і Terrain
+    implementation "org.jmonkeyengine:jme3-effects:3.6.1-stable"
+    implementation "org.jmonkeyengine:jme3-terrain:3.6.1-stable"
+
+    // Netty для мережі
+    implementation "io.netty:netty-all:4.1.112.Final"
+
+    // Логування
+    implementation "org.slf4j:slf4j-simple:2.0.13"
+
+    implementation "org.jmonkeyengine:jme3-plugins:3.6.1-stable" // gltf/fbx/ogre loaders
+    implementation "org.jmonkeyengine:jme3-jogg:3.6.1-stable"    // ogg audio loader
+}
+
+application {
+    mainClass = mainClassName
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}

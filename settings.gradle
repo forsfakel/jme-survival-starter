@@ -1,0 +1,2 @@
+rootProject.name = 'jme-survival-starter'
+include 'shared', 'server', 'client'
