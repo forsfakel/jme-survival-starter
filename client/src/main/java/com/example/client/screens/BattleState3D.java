@@ -35,7 +35,7 @@ public class BattleState3D extends BaseAppState {
 
     public enum Arena {SURFACE, MINE_TUNNEL}
 
-    private com.example.client.PlayerContext pc;
+    private PlayerContext pc;
     private final String battleId;
     private final Arena arena;
     private final Runnable onExit;
@@ -81,7 +81,6 @@ public class BattleState3D extends BaseAppState {
     private float enemyAttackCooldown = 1.2f;
     private float enemyAttackRange = 1.6f;
     private int enemyDamage = 8;
-
 
     // --- slope limit (боремось з лазінням на стіни/круті схили) ---
     private float maxSlopeDeg = 60f;                         // максимально дозволений нахил
@@ -132,11 +131,17 @@ public class BattleState3D extends BaseAppState {
         this.app = (SimpleApplication) application;
 
         // Контекст гравця
-        var pc = com.example.client.PlayerContext.get();
-
+        this.pc = com.example.client.PlayerContext.get();
+        // (опціонально) лінт-захист
+        if (this.pc == null) {
+            throw new IllegalStateException("PlayerContext.get() returned null");
+        }
         // ініціалізація HP бою з контексту
         this.playerMaxHP = pc.getHpMax();
         this.playerHP    = pc.getHp();
+
+        // 3) Позначити, що в бою
+        pc.setInBattle(true);
 
         System.out.println("[CLIENT] BattleState3D.init HP=" +
                                    this.playerHP + "/" + this.playerMaxHP);
@@ -692,33 +697,21 @@ public class BattleState3D extends BaseAppState {
      * Єдине місце завершення бою: спершу зберігаємо HP, потім усе інше.
      */
     private void finishBattle(boolean win) {
-        var pc = com.example.client.PlayerContext.get();
-
-        // 1) переконайся, що беремо HP із поточного бою
+        // синхронізуємо hp з реального бою в контекст
         pc.setHp(this.playerHP);
-
-        System.out.println("[CLIENT] finishBattle: playerHP=" + this.playerHP +
-                                   " / max=" + this.playerMaxHP +
-                                   " (pc=" + pc.getHp() + "/" + pc.getHpMax() + ")");
-
-        // 2) синк у БД (шлемо саме актуальний HP)
-        ((com.example.client.GameApp) app).sendToServer(
-                new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP)
-        );
-        System.out.println("[CLIENT] -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
-
-        // 3) звіт про бій як було
-        ((com.example.client.GameApp) app).sendToServer(
-                new com.example.shared.messages.BattleEndReport(battleId, win)
-        );
-
         pc.setInBattle(false);
+
+        ((GameApp) app).sendToServer(new PlayerHpSync(this.playerHP, this.playerMaxHP));
+        ((GameApp) app).sendToServer(new BattleEndReport(battleId, win));
+
         if (onExit != null) onExit.run();
         getStateManager().detach(this);
     }
 
     @Override
     protected void cleanup(Application application) {
+
+        if (pc != null) pc.setInBattle(false);
         // Лог: щоб побачити, коли саме стейт закривається
         System.out.println(
                 "[BattleState3D] cleanup() called. Saving HP and marking out-of-battle.");
