@@ -701,8 +701,14 @@ public class BattleState3D extends BaseAppState {
         pc.setHp(this.playerHP);
         pc.setInBattle(false);
 
-        ((GameApp) app).sendToServer(new PlayerHpSync(this.playerHP, this.playerMaxHP));
-        ((GameApp) app).sendToServer(new BattleEndReport(battleId, win));
+        ((com.example.client.GameApp) app).sendToServer(
+                new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP)
+        );
+        System.out.println("[CLIENT] finishBattle -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
+
+        ((com.example.client.GameApp) app).sendToServer(
+                new com.example.shared.messages.BattleEndReport(battleId, win)
+        );
 
         if (onExit != null) onExit.run();
         getStateManager().detach(this);
@@ -711,15 +717,24 @@ public class BattleState3D extends BaseAppState {
     @Override
     protected void cleanup(Application application) {
 
-        if (pc != null) pc.setInBattle(false);
-        // Лог: щоб побачити, коли саме стейт закривається
-        System.out.println(
-                "[BattleState3D] cleanup() called. Saving HP and marking out-of-battle.");
+        System.out.println("[BattleState3D] cleanup() called. Saving HP and marking out-of-battle.");
 
-        // СТРАХОВКА: зберегти HP навіть якщо бій завершили не через finishBattle()
+        // синхронізуємо HP з реального бою у локальний контекст
         if (pc != null) {
-            pc.setHp(playerHP);       // ← збереження HP тутpc.setInBattle(false);
+            pc.setHp(this.playerHP);
+            pc.setInBattle(false);
         }
+
+        // ОБОВʼЯЗКОВО: синк на сервер, щоб БД оновилась
+        try {
+            ((com.example.client.GameApp) app).sendToServer(
+                    new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP)
+            );
+            System.out.println("[CLIENT] cleanup -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
 
         var im = app.getInputManager();
         if (exitListener != null) {

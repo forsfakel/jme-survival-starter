@@ -19,7 +19,7 @@ public class GameServer {
     final Map<Channel, ClientSession> sessions = new ConcurrentHashMap<>();
     // канали по ключу локації "x:y"
     final Map<String, Set<Channel>> locationChannels = new ConcurrentHashMap<>();
-
+    private com.example.server.service.HpRegenService regenService;
     // JPA repos
     final PlayerJpaRepository playerRepo = new PlayerJpaRepository();
     final LocationJpaRepository locationRepo = new LocationJpaRepository();
@@ -35,6 +35,10 @@ public class GameServer {
         EventLoopGroup boss = new NioEventLoopGroup(1);
         EventLoopGroup worker = new NioEventLoopGroup();
 
+        regenService = new com.example.server.service.HpRegenService(this);
+        regenService.start();
+        System.out.println("[SERVER] HP regen: started (every 60s, +10%)");
+
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(boss, worker)
@@ -49,6 +53,11 @@ public class GameServer {
             boss.shutdownGracefully();
             worker.shutdownGracefully();
         }
+    }
+
+    public void stop() {
+        if (regenService != null) regenService.close();
+        // ... існуючий graceful shutdown
     }
 }
 

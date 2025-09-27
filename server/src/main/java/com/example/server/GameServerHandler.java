@@ -67,14 +67,25 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
         } else if (msg instanceof OpenBuildingRequest req) {
             handleOpenBuilding(ctx, req);
         } else if (msg instanceof com.example.shared.messages.BattleStartRequest req) {
+            var sess = server.sessions().get(ctx.channel());
+            if (sess != null) {
+                sess.setInBattle(true);
+            }
             System.out.println(
-                    "[SERVER] BattleStartRequest at " + req.getX() + "," + req.getY() + " arena="
+                    "[SERVER] BattleStart at " + req.getX() + "," + req.getY() + " arena="
                             + req.getArena());
             String battleId = java.util.UUID.randomUUID().toString();
-            var enemies = java.util.Arrays.asList("rat", "bat"); // мок
+            var enemies = java.util.Arrays.asList("rat", "bat");
             ctx.writeAndFlush(
                     new com.example.shared.messages.BattleStartResponse(true, battleId, "Fight!",
                             enemies));
+        } else if (msg instanceof com.example.shared.messages.BattleEndReport rep) {
+            var sess = server.sessions().get(ctx.channel());
+            if (sess != null) {
+                sess.setInBattle(false);
+            }
+            System.out.println("[SERVER] BattleEnd: " + (rep.isVictory() ? "WIN" : "LOSE"));
+            // (опційно: лут/нагороди)
         } else if (msg instanceof com.example.shared.messages.PlayerHpSync sync) {
             System.out.println("[HP-SYNC] incoming " + sync.hp + "/" + sync.hpMax);
             var session = server.sessions().get(ctx.channel());
@@ -84,7 +95,7 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
             String name = session.getPlayer().getName();
 
             int hpMax = Math.max(1, Math.min(sync.hpMax, 9999));
-            int hp    = Math.max(0, Math.min(sync.hp, hpMax));
+            int hp = Math.max(0, Math.min(sync.hp, hpMax));
 
             var repo = new com.example.server.repo.PlayerJpaRepository();
             var pe = repo.findByName(name);
@@ -93,18 +104,20 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
                 return;
             }
 
-            System.out.println("[HP-SYNC] before DB " + pe.getNickname() + " " + pe.getHp() + "/" + pe.getHpMax());
+            System.out.println("[HP-SYNC] before DB " + pe.getNickname() + " " + pe.getHp() + "/"
+                                       + pe.getHpMax());
             pe.setHp(hp);
             pe.setHpMax(hpMax);
             repo.saveOrUpdate(pe); // усередині merge+commit
 
             // Перечитаємо одразу (для діагностики)
             var pe2 = repo.findByName(name);
-            System.out.println("[HP-SYNC] after DB  " + pe2.getNickname() + " " + pe2.getHp() + "/" + pe2.getHpMax());
+            System.out.println("[HP-SYNC] after DB  " + pe2.getNickname() + " " + pe2.getHp() + "/"
+                                       + pe2.getHpMax());
 
-            ctx.writeAndFlush(new com.example.shared.messages.PlayerStatsMessage(
-                    pe2.getHp(), pe2.getHpMax(), 1, 0, 100
-            ));
+            ctx.writeAndFlush(
+                    new com.example.shared.messages.PlayerStatsMessage(pe2.getHp(), pe2.getHpMax(),
+                            1, 0, 100));
         }
     }
 
@@ -119,10 +132,12 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
 
         // знайти/створити гравця
         var pe = playerRepo.findByName(name);
-        System.out.println("[LOGIN] findByName('" + name + "') -> " + (pe==null ? "null" : pe.getId()));
+        System.out.println(
+                "[LOGIN] findByName('" + name + "') -> " + (pe == null ? "null" : pe.getId()));
         if (pe == null) {
             var loc00 = locationRepo.getOrCreate(0, 0);
-            pe = new PlayerEntity(UUID.randomUUID().toString(), name, loc00); // тут hp=100/100 тільки для нових
+            pe = new PlayerEntity(UUID.randomUUID().toString(), name,
+                    loc00); // тут hp=100/100 тільки для нових
             playerRepo.saveOrUpdate(pe);
         }
 
@@ -144,9 +159,9 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
         // надіслати поточні стати (HP з БД) клієнту для HUD/контексту
         // Гарантовано шлемо HP з БД після логіну
         System.out.println("[LOGIN] -> PlayerStatsMessage " + pe.getHp() + "/" + pe.getHpMax());
-        ctx.writeAndFlush(new com.example.shared.messages.PlayerStatsMessage(
-                pe.getHp(), pe.getHpMax(), 1, 0, 100
-        ));
+        ctx.writeAndFlush(
+                new com.example.shared.messages.PlayerStatsMessage(pe.getHp(), pe.getHpMax(), 1, 0,
+                        100));
 
         System.out.println("👤 Login ok: " + dto.getName() + " @ " + dto.getLocation().getX() + ","
                                    + dto.getLocation().getY());
