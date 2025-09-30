@@ -64,6 +64,8 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
             handleLogin(ctx, login);
         } else if (msg instanceof PlayerPositionMessage pos) {
             handleMove(ctx, pos);
+        } else if (msg instanceof com.example.shared.messages.ExitBuildingRequest) {
+            handleExitBuilding(ctx);
         } else if (msg instanceof OpenBuildingRequest req) {
             handleOpenBuilding(ctx, req);
         } else if (msg instanceof com.example.shared.messages.BattleStartRequest req) {
@@ -84,7 +86,11 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
             if (sess != null) {
                 sess.setInBattle(false);
             }
-            System.out.println("[SERVER] BattleEnd: " + (rep.isVictory() ? "WIN" : "LOSE"));
+            // Повертаємо UI будівлі, якщо гравець був у ній
+            if (sess != null && sess.isInBuilding() && sess.getBuildingName() != null) {
+                reopenBuilding(ctx, sess.getPlayer().getLocation().getX(),
+                        sess.getPlayer().getLocation().getY(), sess.getBuildingName());
+            }
             // (опційно: лут/нагороди)
         } else if (msg instanceof com.example.shared.messages.PlayerHpSync sync) {
             System.out.println("[HP-SYNC] incoming " + sync.hp + "/" + sync.hpMax);
@@ -155,6 +161,19 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
 
         // розсилаємо список гравців у цій локації
         broadcastPlayerList(dto.getLocation());
+
+        // Відправляємо поточні стати (HP) з БД
+        ctx.writeAndFlush(
+                new com.example.shared.messages.PlayerStatsMessage(pe.getHp(), pe.getHpMax(), 1, 0,
+                        100));
+
+        // Якщо гравець був у будівлі — автоматично відкрити її UI
+        if (pe.isInBuilding() && pe.getBuildingName() != null) {
+            server.sessions().get(ctx.channel()).setInBuilding(true);
+            server.sessions().get(ctx.channel()).setBuildingName(pe.getBuildingName());
+            reopenBuilding(ctx, dto.getLocation().getX(), dto.getLocation().getY(),
+                    pe.getBuildingName());
+        }
 
         // надіслати поточні стати (HP з БД) клієнту для HUD/контексту
         // Гарантовано шлемо HP з БД після логіну
@@ -270,8 +289,6 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
 
         int x = req.getX(), y = req.getY();
         String name = req.getBuildingName();
-
-        // Завантажуємо будівлю з БД
         try (var s = com.example.server.util.HibernateUtil.getSessionFactory().openSession()) {
             var b = s.createQuery(
                             "from BuildingEntity b where b.location.id.x=:x and b.location.id.y=:y and b.name=:n",
@@ -302,8 +319,55 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
                 case "FACTORY" -> bt = com.example.shared.model.BuildingType.FACTORY;
                 default -> bt = com.example.shared.model.BuildingType.SHOP; // дефолт
             }
+            // Зберігаємо стан “у будівлі” ТІЛЬКИ після успішних перевірок
+                        var pe = server.players().findByName(sess.getPlayer().getName());
+                        if (pe != null) {
+                                pe.setInBuilding(true);
+                                pe.setBuildingName(name);
+                                server.players().saveOrUpdate(pe);
+                            }
+                        sess.setInBuilding(true);
+                        sess.setBuildingName(name);
 
             ctx.writeAndFlush(new OpenBuildingResponse(true, null, name, bt));
+        }
+    }
+
+    private void handleExitBuilding(ChannelHandlerContext ctx) {
+        var sess = server.sessions().get(ctx.channel());
+        if (sess == null || sess.getPlayer() == null) {
+            return;
+        }
+        var pe = server.players().findByName(sess.getPlayer().getName());
+        if (pe != null) {
+            pe.setInBuilding(false);
+            pe.setBuildingName(null);
+            server.players().saveOrUpdate(pe);
+        }
+        sess.setInBuilding(false);
+        sess.setBuildingName(null);
+    }
+
+    private void reopenBuilding(ChannelHandlerContext ctx, int x, int y, String name) {
+        try (var s = com.example.server.util.HibernateUtil.getSessionFactory().openSession()) {
+            var b = s.createQuery(
+                            "from BuildingEntity b where b.location.id.x=:x and b.location.id.y=:y and b.name=:n",
+                            com.example.server.model.BuildingEntity.class).setParameter("x", x)
+                            .setParameter("y", y).setParameter("n", name).uniqueResult();
+            if (b == null) {
+                return;
+            }
+            com.example.shared.model.BuildingType bt;
+            String t = b.getType() != null ? b.getType().toUpperCase() : "";
+            switch (t) {
+                case "MINE" -> bt = com.example.shared.model.BuildingType.MINE;
+                case "SHOP" -> bt = com.example.shared.model.BuildingType.SHOP;
+                case "WAREHOUSE" -> bt = com.example.shared.model.BuildingType.WAREHOUSE;
+                case "FACTORY" -> bt = com.example.shared.model.BuildingType.FACTORY;
+                default -> bt = com.example.shared.model.BuildingType.SHOP;
+            }
+            ctx.writeAndFlush(
+                    new com.example.shared.messages.OpenBuildingResponse(true, null, name, bt));
         }
     }
 }

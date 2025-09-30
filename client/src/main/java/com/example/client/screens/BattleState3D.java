@@ -138,13 +138,13 @@ public class BattleState3D extends BaseAppState {
         }
         // ініціалізація HP бою з контексту
         this.playerMaxHP = pc.getHpMax();
-        this.playerHP    = pc.getHp();
+        this.playerHP = pc.getHp();
 
         // 3) Позначити, що в бою
         pc.setInBattle(true);
 
-        System.out.println("[CLIENT] BattleState3D.init HP=" +
-                                   this.playerHP + "/" + this.playerMaxHP);
+        System.out.println(
+                "[CLIENT] BattleState3D.init HP=" + this.playerHP + "/" + this.playerMaxHP);
 
         // 1) камера (перспектива) + фон
         var cam = app.getCamera();
@@ -702,22 +702,24 @@ public class BattleState3D extends BaseAppState {
         pc.setInBattle(false);
 
         ((com.example.client.GameApp) app).sendToServer(
-                new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP)
-        );
-        System.out.println("[CLIENT] finishBattle -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
+                new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP));
+        System.out.println(
+                "[CLIENT] finishBattle -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
 
         ((com.example.client.GameApp) app).sendToServer(
-                new com.example.shared.messages.BattleEndReport(battleId, win)
-        );
+                new com.example.shared.messages.BattleEndReport(battleId, win));
 
-        if (onExit != null) onExit.run();
+        if (onExit != null) {
+            onExit.run();
+        }
         getStateManager().detach(this);
     }
 
     @Override
     protected void cleanup(Application application) {
 
-        System.out.println("[BattleState3D] cleanup() called. Saving HP and marking out-of-battle.");
+        System.out.println(
+                "[BattleState3D] cleanup() called. Saving HP and marking out-of-battle.");
 
         // синхронізуємо HP з реального бою у локальний контекст
         if (pc != null) {
@@ -728,9 +730,9 @@ public class BattleState3D extends BaseAppState {
         // ОБОВʼЯЗКОВО: синк на сервер, щоб БД оновилась
         try {
             ((com.example.client.GameApp) app).sendToServer(
-                    new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP)
-            );
-            System.out.println("[CLIENT] cleanup -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
+                    new com.example.shared.messages.PlayerHpSync(this.playerHP, this.playerMaxHP));
+            System.out.println(
+                    "[CLIENT] cleanup -> PlayerHpSync " + this.playerHP + "/" + this.playerMaxHP);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -762,6 +764,14 @@ public class BattleState3D extends BaseAppState {
         pc.setInBattle(false); // страховка
         app.getRootNode().detachChild(localRoot);
         app.getInputManager().setCursorVisible(true);
+        // якщо бій був у будівлі — попросимо відкрити її знову
+        if (pc != null && pc.isInBuilding() && pc.getBuildingName() != null) {
+            ((com.example.client.GameApp) app).sendToServer(
+                    new com.example.shared.messages.OpenBuildingRequest(pc.getBuildingName(),
+                            pc.getLocation().getX(), pc.getLocation().getY()));
+        } else if (onExit != null) {
+            onExit.run();
+        }
 
     }
 
