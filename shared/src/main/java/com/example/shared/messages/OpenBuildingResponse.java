@@ -8,14 +8,46 @@ public class OpenBuildingResponse implements Serializable {
     private String reason;          // якщо !ok
     private String buildingName;
     private BuildingType type;      // якщо ok
+    private String errorMessage;
 
-    public OpenBuildingResponse() {}
-    public OpenBuildingResponse(boolean ok, String reason, String buildingName, BuildingType type) {
-        this.ok = ok; this.reason = reason; this.buildingName = buildingName; this.type = type;
+    public OpenBuildingResponse() {
     }
 
-    public boolean isOk() { return ok; }
-    public String getReason() { return reason; }
-    public String getBuildingName() { return buildingName; }
-    public BuildingType getType() { return type; }
+    public OpenBuildingResponse(boolean ok, String reason, String buildingName, BuildingType type) {
+        this.ok = ok;
+        this.reason = reason;
+        this.buildingName = buildingName;
+        this.type = type;
+
+    }
+
+    public OpenBuildingResponse(boolean ok, String errorMessage, String reason, String buildingName,
+            BuildingType type) {
+        this.ok = ok;
+        this.reason = reason;
+        this.buildingName = buildingName;
+        this.type = type;
+        this.errorMessage = errorMessage;
+    }
+
+    public boolean isOk() {
+        return ok;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public String getBuildingName() {
+        return buildingName;
+    }
+
+    public BuildingType getType() {
+        return type;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
 }

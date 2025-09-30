@@ -24,7 +24,7 @@ public class GameClientHandler extends SimpleChannelInboundHandler<Object> {
             gameApp.onPlayerList(list);
         } else if (msg instanceof OpenBuildingResponse r) {
             gameApp.enqueue(() -> {
-                if (r.isSuccess()) {
+                if (r.isOk()) {
                     com.example.client.PlayerContext.get().setBuilding(r.getBuildingName(), true);
                     gameApp.onOpenBuilding(r);
                 } else {

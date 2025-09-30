@@ -6,6 +6,7 @@ import com.example.client.screens.PlayerHudState;
 import com.example.client.screens.ShopState;
 import com.example.client.screens.WarehouseState;
 import com.example.shared.messages.LocationMessage;
+import com.example.shared.messages.OpenBuildingResponse;
 import com.example.shared.messages.PlayerListMessage;
 import com.example.shared.messages.PlayerPositionMessage;
 import com.example.shared.model.WorldLocation;
@@ -575,6 +576,15 @@ public class GameApp extends SimpleApplication {
             channel.writeAndFlush(msg);
         }
     }
+    public void onOpenBuilding(OpenBuildingResponse r) {
+        System.out.println("[CLIENT] OpenBuilding ok: " + r.getBuildingName()
+                                   + " type=" + r.getType());
+        // TODO: показати UI будівлі (мінімум — тост/консоль)
+    }
 
+    public void onOpenBuildingError(String error) {
+        System.out.println("[CLIENT] OpenBuilding failed: " + error);
+        toast("Помилка відкриття будівлі: " + error);
+    }
 
 }
