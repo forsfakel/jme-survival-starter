@@ -287,8 +287,11 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
             return;
         }
 
-        int x = req.getX(), y = req.getY();
-        String name = req.getBuildingName();
+        // 1) дістаємо параметри запиту
+        final int x = req.getX();
+        final int y = req.getY();
+        final String name = req.getBuildingName();
+
         try (var s = com.example.server.util.HibernateUtil.getSessionFactory().openSession()) {
             var b = s.createQuery(
                             "from BuildingEntity b where b.location.id.x=:x and b.location.id.y=:y and b.name=:n",
@@ -311,24 +314,34 @@ public class GameServerHandler extends SimpleChannelInboundHandler<Object> {
 
             // Мапимо type → enum
             com.example.shared.model.BuildingType bt;
-            String t = b.getType() != null ? b.getType().toUpperCase() : "";
+            String t = (b.getType() != null) ? b.getType().toUpperCase() : "";
             switch (t) {
-                case "MINE" -> bt = com.example.shared.model.BuildingType.MINE;
-                case "SHOP" -> bt = com.example.shared.model.BuildingType.SHOP;
-                case "WAREHOUSE" -> bt = com.example.shared.model.BuildingType.WAREHOUSE;
-                case "FACTORY" -> bt = com.example.shared.model.BuildingType.FACTORY;
-                default -> bt = com.example.shared.model.BuildingType.SHOP; // дефолт
+                case "MINE":
+                    bt = com.example.shared.model.BuildingType.MINE;
+                    break;
+                case "WAREHOUSE":
+                    bt = com.example.shared.model.BuildingType.WAREHOUSE;
+                    break;
+                case "FACTORY":
+                    bt = com.example.shared.model.BuildingType.FACTORY;
+                    break;
+                case "SHOP":
+                default:
+                    bt = com.example.shared.model.BuildingType.SHOP;
+                    break;
             }
-            // Зберігаємо стан “у будівлі” ТІЛЬКИ після успішних перевірок
-                        var pe = server.players().findByName(sess.getPlayer().getName());
-                        if (pe != null) {
-                                pe.setInBuilding(true);
-                                pe.setBuildingName(name);
-                                server.players().saveOrUpdate(pe);
-                            }
-                        sess.setInBuilding(true);
-                        sess.setBuildingName(name);
 
+            // 2) лише тепер фіксуємо стан "у будівлі" в сесії та БД
+            var pe = server.players().findByName(sess.getPlayer().getName());
+            if (pe != null) {
+                pe.setInBuilding(true);
+                pe.setBuildingName(name);
+                server.players().saveOrUpdate(pe);
+            }
+            sess.setInBuilding(true);
+            sess.setBuildingName(name);
+
+            // 3) відповідаємо клієнту
             ctx.writeAndFlush(new OpenBuildingResponse(true, null, name, bt));
         }
     }

@@ -27,18 +27,17 @@ public class GameClientHandler extends SimpleChannelInboundHandler<Object> {
         } else if (msg instanceof OpenBuildingResponse r) {
             gameApp.enqueue(() -> {
                 if (r.isOk()) {
-                    com.example.client.PlayerContext.get().setBuilding(r.getBuildingName(), true);
-                    gameApp.onOpenBuilding(r);
+                    PlayerContext.get().setBuilding(r.getBuildingName(), true);
+                    gameApp.onOpenBuilding(r); // показати UI
                 } else {
-                    gameApp.onOpenBuildingError(r.getErrorMessage());
-                    // якщо у твоєму OpenBuildingResponse ще немає getErrorMessage(),
-                    // або додай його (див. diff нижче), або підстав "Невідомо"
-                    String err = null;
+                    PlayerContext.get().setBuilding(null, false); // гарантія
+                    String err;
                     try {
                         err = r.getErrorMessage();
-                    } catch (Throwable ignored) {
+                    } catch (Throwable t) {
+                        err = "Unknown error";
                     }
-                    gameApp.onOpenBuildingError(err != null ? err : "Unknown error");
+                    gameApp.onOpenBuildingError(err);
                 }
             });
         } else if (msg instanceof PlayerStatsMessage s) {
