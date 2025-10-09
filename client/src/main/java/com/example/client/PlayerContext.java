@@ -91,12 +91,15 @@ public final class PlayerContext {
         prefs.putInt(KEY_HPMAX, this.hpMax);
         prefs.putInt(KEY_HP, this.hp);
     }
+
     public WorldLocation getLocation() {
-               return location;
-           }
-
-           public void setLocation(WorldLocation location) {
-               this.location = location;
-           }
-
+        return location;
+    }
+    public void setLocation(WorldLocation location) {
+        this.location = location;
+    }
 }
+
+
+
+

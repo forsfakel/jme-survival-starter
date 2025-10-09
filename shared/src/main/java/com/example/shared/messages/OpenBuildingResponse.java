@@ -7,26 +7,27 @@ public class OpenBuildingResponse implements Serializable {
     private boolean ok;
     private String reason;          // якщо !ok
     private String buildingName;
-    private BuildingType type;      // якщо ok
+    private BuildingType buildingType;      // якщо ok
     private String errorMessage;
 
     public OpenBuildingResponse() {
     }
 
-    public OpenBuildingResponse(boolean ok, String reason, String buildingName, BuildingType type) {
+    public OpenBuildingResponse(boolean ok, String errorMessage, String buildingName, BuildingType type) {
         this.ok = ok;
         this.reason = reason;
         this.buildingName = buildingName;
-        this.type = type;
+        this.buildingType = type;
 
     }
+
 
     public OpenBuildingResponse(boolean ok, String errorMessage, String reason, String buildingName,
             BuildingType type) {
         this.ok = ok;
         this.reason = reason;
         this.buildingName = buildingName;
-        this.type = type;
+        this.buildingType = type;
         this.errorMessage = errorMessage;
     }
 
@@ -43,7 +44,7 @@ public class OpenBuildingResponse implements Serializable {
     }
 
     public BuildingType getType() {
-        return type;
+        return buildingType;
     }
 
     public String getErrorMessage() {

@@ -765,10 +765,15 @@ public class BattleState3D extends BaseAppState {
         app.getRootNode().detachChild(localRoot);
         app.getInputManager().setCursorVisible(true);
         // якщо бій був у будівлі — попросимо відкрити її знову
-        if (pc != null && pc.isInBuilding() && pc.getBuildingName() != null) {
-            ((com.example.client.GameApp) app).sendToServer(
-                    new com.example.shared.messages.OpenBuildingRequest(pc.getBuildingName(),
-                            pc.getLocation().getX(), pc.getLocation().getY()));
+        // reopen building UI if we were in building
+                if (pc.isInBuilding() && pc.getBuildingName() != null) {
+                        int lx = 0, ly = 0;
+                        var loc = pc.getLocation();
+                        if (loc != null) { lx = loc.getX(); ly = loc.getY(); }
+                    ((com.example.client.GameApp) app).sendToServer(
+                                            new com.example.shared.messages.OpenBuildingRequest(
+                                                        lx, ly, pc.getBuildingName()));
+
         } else if (onExit != null) {
             onExit.run();
         }

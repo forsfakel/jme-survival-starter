@@ -549,7 +549,8 @@ public class GameApp extends SimpleApplication {
 
             var hud = stateManager.getState(com.example.client.screens.PlayerHudState.class);
             if (hud != null) {
-                hud.updateStats(m.getHp(), m.getMaxHp(), m.getLevel(), m.getExp(), m.getExpToNext());
+                hud.updateStats(m.getHp(), m.getMaxHp(), m.getLevel(), m.getExp(),
+                        m.getExpToNext());
             }
         });
     }
@@ -576,10 +577,10 @@ public class GameApp extends SimpleApplication {
             channel.writeAndFlush(msg);
         }
     }
+
     public void onOpenBuilding(OpenBuildingResponse r) {
-        System.out.println("[CLIENT] OpenBuilding ok: " + r.getBuildingName()
-                                   + " type=" + r.getType());
-        // TODO: показати UI будівлі (мінімум — тост/консоль)
+        // TODO: тут твій справжній UI. Поки — тост/лог.
+        toast("Відкрито будівлю: " + r.getBuildingName() + " (" + r.getType() + ")");
     }
 
     public void onOpenBuildingError(String error) {

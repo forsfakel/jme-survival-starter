@@ -20,6 +20,8 @@ public class GameClientHandler extends SimpleChannelInboundHandler<Object> {
     protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof LocationMessage loc) {
             gameApp.onLocation(loc);
+            // тримай поточну локацію в контексті — потрібно BattleState3D для reopen
+            com.example.client.PlayerContext.get().setLocation(loc.getLocation());
         } else if (msg instanceof PlayerListMessage list) {
             gameApp.onPlayerList(list);
         } else if (msg instanceof OpenBuildingResponse r) {
@@ -29,6 +31,14 @@ public class GameClientHandler extends SimpleChannelInboundHandler<Object> {
                     gameApp.onOpenBuilding(r);
                 } else {
                     gameApp.onOpenBuildingError(r.getErrorMessage());
+                    // якщо у твоєму OpenBuildingResponse ще немає getErrorMessage(),
+                    // або додай його (див. diff нижче), або підстав "Невідомо"
+                    String err = null;
+                    try {
+                        err = r.getErrorMessage();
+                    } catch (Throwable ignored) {
+                    }
+                    gameApp.onOpenBuildingError(err != null ? err : "Unknown error");
                 }
             });
         } else if (msg instanceof PlayerStatsMessage s) {
